@@ -1,0 +1,6 @@
+.env
+envs
+__pycache__
+seed.py
+sql/init.sql
+storage/.gitkeep
