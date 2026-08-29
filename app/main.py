@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine, SessionLocal
 from routers import auth, users, expenses, files
 from config import settings
-import seed
+# import seed
 
 app = FastAPI(title="Expense Tracker API", version="1.0.0")
 
@@ -17,16 +17,16 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def on_startup():
-    # Creates tables if they don't exist yet, then seeds the 5 demo accounts
-    # (head / hr / emp1 / emp2 / emp3) so login works the first time you run this.
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed.seed_users(db)
-    finally:
-        db.close()
+# @app.on_event("startup")
+# def on_startup():
+#     # Creates tables if they don't exist yet, then seeds the 5 demo accounts
+#     # (head / hr / emp1 / emp2 / emp3) so login works the first time you run this.
+#     Base.metadata.create_all(bind=engine)
+#     db = SessionLocal()
+#     try:
+#         seed.seed_users(db)
+#     finally:
+#         db.close()
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
