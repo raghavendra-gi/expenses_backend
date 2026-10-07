@@ -4,3 +4,4 @@ __pycache__
 seed.py
 sql/init.sql
 storage/.gitkeep
+storage/
