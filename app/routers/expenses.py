@@ -1,6 +1,5 @@
 import csv
 import io
-from datetime import datetime, timezone  # <--- UPDATED IMPORT
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,6 +13,7 @@ from schemas import (
     BulkDecisionRequest, StatsOut,
 )
 import models
+from timeutil import utcnow, to_ist
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ TWO_STAGE_TYPES = {"Regional Trip"}
 
 
 def _push_history(expense: models.Expense, by: str, action: str, note: str = ""):
-    expense.history.append(models.ExpenseHistory(by=by, action=action, note=note, at=datetime.now(timezone.utc)))  # <--- FIXED
+    expense.history.append(models.ExpenseHistory(by=by, action=action, note=note, at=utcnow()))
 
 
 def _visible_query(db: Session, user: models.User):
@@ -114,6 +114,8 @@ def export_csv(
         amount = float((e.data or {}).get("amount") or 0)
         total += amount
         submitted = e.submitted_date or e.created_date
+        if submitted:
+            submitted = to_ist(submitted)   # stored in UTC, exported in IST
         writer.writerow([
             e.employee_name, e.type, amount,
             submitted.strftime("%d-%b-%Y") if submitted else "",
@@ -153,8 +155,8 @@ def create_expense(
         type=payload.type,
         data=payload.data,
         status="In Progress" if is_start else "Pending",
-        created_date=datetime.now(timezone.utc),     # <--- FIXED
-        submitted_date=datetime.now(timezone.utc),   # <--- FIXED
+        created_date=utcnow(),
+        submitted_date=utcnow(),
     )
     _push_history(expense, current_user.display_name, "Trip started" if is_start else "Submitted for approval")
 
@@ -192,16 +194,16 @@ def update_expense(
     if e.status == "In Progress":
         e.data = {**(e.data or {}), **payload.data}
         e.status = "Pending"
-        e.submitted_date = datetime.now(timezone.utc)  # <--- FIXED
+        e.submitted_date = utcnow()
         _push_history(e, current_user.display_name, "Trip ended and submitted for approval")
     elif e.status == "Pending":
         e.data = payload.data
-        e.submitted_date = datetime.now(timezone.utc)  # <--- FIXED
+        e.submitted_date = utcnow()
         _push_history(e, current_user.display_name, "Edited by employee")
     elif e.status == "Rejected":
         e.data = payload.data
         e.status = "Pending"
-        e.submitted_date = datetime.now(timezone.utc)  # <--- FIXED
+        e.submitted_date = utcnow()
         e.decided_by = None
         e.decided_date = None
         e.rejection_reason = None
@@ -236,12 +238,16 @@ def decide_expense(
     if e.status == "In Progress":
         raise HTTPException(status_code=400, detail="That trip has not been submitted yet")
 
+    comment = (payload.reason or "").strip()
+
     e.status = payload.status
     e.decided_by = current_user.display_name
     e.decided_by_role = current_user.role
-    e.decided_date = datetime.now(timezone.utc)  # <--- FIXED
-    e.rejection_reason = payload.reason
-    _push_history(e, current_user.display_name, f"{payload.status} by {current_user.role}", payload.reason or "")
+    e.decided_date = utcnow()
+    # rejection_reason only holds a REJECTION reason. Approving clears any old one.
+    e.rejection_reason = comment if (payload.status == "Rejected" and comment) else None
+    # the comment for either outcome is kept in the activity history
+    _push_history(e, current_user.display_name, f"{payload.status} by {current_user.role}", comment)
 
     db.commit()
     db.refresh(e)
@@ -263,13 +269,16 @@ def bulk_decide(
         .filter(models.Expense.id.in_(payload.ids), models.Expense.status != "In Progress")
         .all()
     )
+
+    comment = (payload.reason or "").strip()
+
     for e in items:
         e.status = payload.status
         e.decided_by = current_user.display_name
         e.decided_by_role = current_user.role
-        e.decided_date = datetime.now(timezone.utc)  # <--- FIXED
-        e.rejection_reason = payload.reason
-        _push_history(e, current_user.display_name, f"{payload.status} in bulk by {current_user.role}", payload.reason or "")
+        e.decided_date = utcnow()
+        e.rejection_reason = comment if (payload.status == "Rejected" and comment) else None
+        _push_history(e, current_user.display_name, f"{payload.status} in bulk by {current_user.role}", comment)
 
     db.commit()
     return {"updated": len(items)}

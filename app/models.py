@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime, ForeignKey, JSON
 )
 from sqlalchemy.orm import relationship
 
 from database import Base
+from timeutil import utcnow
 
 
 class User(Base):
@@ -16,7 +16,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False)          # head | hr | employee
     display_name = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class Expense(Base):
@@ -35,7 +35,7 @@ class Expense(Base):
     status = Column(String(20), nullable=False, default="Pending", index=True)
     # Pending | Approved | Rejected | In Progress (two-stage trips before they're ended)
 
-    created_date = Column(DateTime, default=datetime.now(timezone.utc))
+    created_date = Column(DateTime, default=utcnow)
     submitted_date = Column(DateTime, nullable=True)
     
     # Decision tracking fields
@@ -57,7 +57,7 @@ class ExpenseHistory(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     expense_id = Column(Integer, ForeignKey("expenses.id", ondelete="CASCADE"), nullable=False, index=True)
-    at = Column(DateTime, default=datetime.utcnow)
+    at = Column(DateTime, default=utcnow)
     by = Column(String(100))
     action = Column(String(255))
     note = Column(Text, nullable=True)
@@ -80,6 +80,6 @@ class FileAsset(Base):
     size = Column(Integer, nullable=False)
     storage_path = Column(String(500), nullable=False)
     uploaded_by = Column(String(50), nullable=True)
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=utcnow)
 
     expense = relationship("Expense", back_populates="files")

@@ -17,16 +17,15 @@ app.add_middleware(
 )
 
 
-# @app.on_event("startup")
-# def on_startup():
-#     # Creates tables if they don't exist yet, then seeds the 5 demo accounts
-#     # (head / hr / emp1 / emp2 / emp3) so login works the first time you run this.
-#     Base.metadata.create_all(bind=engine)
-#     db = SessionLocal()
-#     try:
-#         seed.seed_users(db)
-#     finally:
-#         db.close()
+ #@app.on_event("startup")
+ #def on_startup():
+    # Creates tables if they don't exist yet, then seeds the 5 demo accounts     # (head / hr / emp1 / emp2 / emp3) so login works the first time you run this.
+  #   Base.metadata.create_all(bind=engine)
+  #   db = SessionLocal()
+  #  try:
+  #       seed. _users(db)
+  #  finally:
+  #       db.close()
 
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
@@ -38,3 +37,4 @@ app.include_router(files.router, prefix="/api/files", tags=["files"])
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+

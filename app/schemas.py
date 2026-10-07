@@ -1,6 +1,13 @@
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Annotated, Optional, List
+from pydantic import BaseModel, Field, PlainSerializer
+
+from timeutil import as_utc
+
+# Every datetime sent to the browser goes out as UTC with a trailing 'Z'
+# (e.g. 2026-10-05T06:51:00Z). Without the 'Z' the browser treats the value as
+# local time and shows the wrong hour.
+UTCDateTime = Annotated[datetime, PlainSerializer(as_utc, return_type=datetime)]
 
 
 # ───────── Auth ─────────
@@ -27,7 +34,7 @@ class TokenResponse(BaseModel):
 
 # ───────── History ─────────
 class HistoryEntryOut(BaseModel):
-    at: datetime
+    at: UTCDateTime
     by: str
     action: str
     note: Optional[str] = ""
@@ -67,13 +74,14 @@ class DecisionRequest(BaseModel):
 class BulkDecisionRequest(BaseModel):
     ids: List[int]
     status: str
+    reason: Optional[str] = None      # comment applied to every selected expense
 
 
 # schemas.py - Add to ExpenseOut
 class ExpenseHistoryOut(BaseModel):
     """Audit trail entry for an expense."""
     id: int
-    at: datetime
+    at: UTCDateTime
     by: str
     action: str
     note: Optional[str] = None
@@ -89,20 +97,16 @@ class ExpenseOut(BaseModel):
     type: str
     data: dict
     status: str
-    created_date: datetime
-    submitted_date: Optional[datetime]
+    created_date: UTCDateTime
+    submitted_date: Optional[UTCDateTime]
     decided_by: Optional[str]
     decided_by_role: Optional[str]
-    decided_date: Optional[datetime]
+    decided_date: Optional[UTCDateTime]
     rejection_reason: Optional[str]
     history: List[ExpenseHistoryOut] = []
 
     class Config:
         from_attributes = True
-        # Add this line right here!
-        json_encoders = {
-            datetime: lambda v: v.isoformat() + 'Z'  # Forces a Z at the end!
-        }
 
 
 class StatsOut(BaseModel):
