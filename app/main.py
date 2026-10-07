@@ -1,12 +1,26 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine, SessionLocal
 from routers import auth, users, expenses, files
 from config import settings
-# import seed
+import models
+from seed import seed_users
 
-app = FastAPI(title="Expense Tracker API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)   # creates tables in Neon
+    db = SessionLocal()
+    try:
+        seed_users(db)                      # creates head/hr/emp1-3 once
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="Expense Tracker API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,18 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
- #@app.on_event("startup")
- #def on_startup():
-    # Creates tables if they don't exist yet, then seeds the 5 demo accounts     # (head / hr / emp1 / emp2 / emp3) so login works the first time you run this.
-  #   Base.metadata.create_all(bind=engine)
-  #   db = SessionLocal()
-  #  try:
-  #       seed. _users(db)
-  #  finally:
-  #       db.close()
-
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
@@ -37,4 +39,3 @@ app.include_router(files.router, prefix="/api/files", tags=["files"])
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-

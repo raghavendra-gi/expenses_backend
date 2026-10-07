@@ -6,7 +6,7 @@ load_dotenv()
 
 class Settings:
     database_url: str = os.getenv(
-        "DATABASE_URL", "mysql+pymysql://root:Raghavan%4010@localhost:3306/expense_tracker"
+        "DATABASE_URL", "postgresql://neondb_owner:npg_j6FRl1OfhVPd@ep-twilight-scene-b43mvwvx-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     )
     secret_key: str = os.getenv("SECRET_KEY", "dev-secret-change-me")
     algorithm: str = "HS256"
